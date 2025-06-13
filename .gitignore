@@ -1,0 +1,72 @@
+# Archivo .gitignore estándar para soluciones de .NET y Visual Studio
+
+## Carpetas de dependencias y herramientas
+##
+# Ignorar carpetas de paquetes de NuGet
+[Pp]ackages/
+# Restaurar paquetes de NuGet en la compilación
+*.nupkg
+# La carpeta de paquetes de la nueva estructura de csproj
+/packages
+
+# Ignorar las carpetas de compilación y salida
+[Bb]in/
+[Oo]bj/
+
+## Archivos y carpetas específicos de Visual Studio
+##
+# Ignorar la carpeta oculta de configuración de Visual Studio
+.vs/
+
+# Archivos de opciones de usuario de Visual Studio
+# Estos guardan la configuración personal de la solución, como qué archivos tienes abiertos
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Proyectos de Visual Studio Code
+.vscode/
+
+## Archivos de compilación y publicación
+##
+# Carpetas de publicación
+[Pp]ublish/
+[Rr]elease/
+[Rr]eleases/
+/publish
+
+# Archivos de base de datos generados
+*.mdf
+*.ldf
+*.sdf
+
+## Archivos del sistema operativo y de entorno
+##
+# Archivos de caché de miniaturas de Windows
+Thumbs.db
+ehthumbs.db
+
+# Archivos de configuración local (no deben ir al repositorio)
+# Especialmente útil para claves de API, cadenas de conexión, etc.
+*.local.json
+appsettings.Development.json
+
+## Otros
+##
+# Archivos de profiling y de resultados de tests
+*.psess
+*.vsp
+*.vspx
+*.sap
+TestResult/
+*.trx
+
+# Archivos de Resharper (si se usa)
+_ReSharper*/
+*.[Rr]esharper
+*.DotSettings.user
+
+# Archivos de caché de Rider (si se usa)
+.idea/
+
