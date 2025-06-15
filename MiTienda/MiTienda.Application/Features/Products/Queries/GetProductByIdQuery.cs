@@ -12,7 +12,7 @@ namespace MiTienda.Application.Features.Products.Queries.GetProductById
         public Guid Id { get; set; }
     }
 
-    // Este es el manejador para la consulta.
+    // Este es el manejador para la consulta.ssssss
     public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, Product?>
     {
         private readonly IProductRepository _productRepository;

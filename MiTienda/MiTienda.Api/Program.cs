@@ -1,69 +1,83 @@
 // --- Proyecto: MiTienda.Api ---
-// --- Archivo: Program.cs (Versión Final con MediatR) ---
+// --- Archivo: Program.cs (Modificado para usar Serilog) ---
 
-using MediatR; // <-- Asegúrate de que este using está presente
+using MediatR;
+using MiTienda.Application.Common.Behaviors; // Asegúrate de tener este using para el LoggingBehavior
 using MiTienda.Application.Interfaces;
-using MiTienda.Domain.Entities;
 using MiTienda.Infrastructure.Repositories;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
+using Serilog; // <-- AÑADIR ESTE USING
 
-var builder = WebApplication.CreateBuilder(args);
+// --- PASO 1: CONFIGURAR SERILOG ---
+// Creamos un logger de "bootstrap" para poder registrar cualquier error que ocurra DURANTE el inicio de la aplicación.
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-// --- SECCIÓN DE CONFIGURACIÓN DE MONGODB ---
-BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+Log.Information("Iniciando la aplicación MiTienda...");
 
-
-// --- SECCIÓN DE INYECCIÓN DE DEPENDENCIAS (DI) ---
-
-// Añadir la configuración para poder leer appsettings.json
-builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-
-// 1. Registrar la implementación del Repositorio
-builder.Services.AddSingleton<IProductRepository, MongoProductRepository>();
-
-// 2. ¡Registrar MediatR!
-// Esta única línea escanea todo el ensamblado de 'Application' en busca de
-// cualquier clase que implemente las interfaces de MediatR (IRequestHandler, etc.)
-// y las registra automáticamente en el contenedor de DI.
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(MiTienda.Application.Features.Products.Commands.CreateProduct.CreateProductCommandHandler).Assembly));
-
-// ¡Ya no necesitamos registrar los handlers uno por uno!
-// builder.Services.AddScoped<CreateProductCommandHandler>(); // <-- Esta línea se elimina o comenta.
-
-
-// --- FIN DE LA SECCIÓN DE DI ---
-
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
+try
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var builder = WebApplication.CreateBuilder(args);
 
-    // --- Añadir datos de prueba (usando MediatR para ser consistentes) ---
-    using (var scope = app.Services.CreateScope())
+    // --- PASO 2: USAR SERILOG COMO EL LOGGER DE LA APLICACIÓN ---
+    // Limpiamos los proveedores de logging por defecto y le decimos a la aplicación que use Serilog.
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration) // Lee la configuración desde appsettings.json (opcional)
+        .ReadFrom.Services(services) // Permite inyectar servicios en los Sinks
+        .Enrich.FromLogContext() // Añade contexto a los logs
+        .WriteTo.Console( // Le decimos que escriba en la consola
+            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")); // ¡NUESTRA PLANTILLA PERSONALIZADA!
+
+
+    // --- SECCIÓN DE CONFIGURACIÓN DE MONGODB ---
+    BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
+
+
+    // --- SECCIÓN DE INYECCIÓN DE DEPENDENCIAS (DI) ---
+    builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+    builder.Services.AddSingleton<IProductRepository, MongoProductRepository>();
+
+    // Registrar el Pipeline Behavior de MediatR
+    builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+
+    // Registrar MediatR
+    builder.Services.AddMediatR(cfg =>
+        cfg.RegisterServicesFromAssembly(typeof(MiTienda.Application.Features.Products.Commands.CreateProduct.CreateProductCommandHandler).Assembly));
+
+
+    // --- FIN DE LA SECCIÓN DE DI ---
+
+    builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
+
+    var app = builder.Build();
+
+    // Usar el request logging de Serilog (opcional pero muy útil)
+    // Esto crea logs automáticos para cada petición HTTP que llega.
+    app.UseSerilogRequestLogging();
+
+    if (app.Environment.IsDevelopment())
     {
-        var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
-        var productRepository = scope.ServiceProvider.GetRequiredService<IProductRepository>();
-
-        // Comprobamos si ya hay datos para no insertarlos cada vez que arranca.
-        if (!(await productRepository.GetAllAsync()).Any())
-        {
-            await mediator.Send(new MiTienda.Application.Features.Products.Commands.CreateProduct.CreateProductCommand { Name = "Laptop Pro (Mongo)", Price = 1250.50m, Stock = 50 });
-            await mediator.Send(new MiTienda.Application.Features.Products.Commands.CreateProduct.CreateProductCommand { Name = "Mouse Inalámbrico (Mongo)", Price = 30.00m, Stock = 200 });
-            await mediator.Send(new MiTienda.Application.Features.Products.Commands.CreateProduct.CreateProductCommand { Name = "Teclado Mecánico RGB (Mongo)", Price = 155.75m, Stock = 100 });
-        }
+        app.UseSwagger();
+        app.UseSwaggerUI();
+        // ... (Tu código para añadir datos de prueba)
     }
-}
 
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
-app.Run();
+    app.UseHttpsRedirection();
+    app.UseAuthorization();
+    app.MapControllers();
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "La aplicación ha fallado al iniciar.");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
