@@ -1,41 +1,49 @@
 ﻿// --- Proyecto: MiTienda.Domain ---
-// --- Capa: Entidades (El núcleo) ---
-// Este proyecto contiene las reglas de negocio más fundamentales y de más alto nivel.
-// No depende de NINGÚN otro proyecto en la solución. Es completamente puro.
+// --- Archivo: Entities/Product.cs (MODIFICADO) ---
+// Aquí es donde van las REGLAS DE DOMINIO (invariantes).
 
 namespace MiTienda.Domain.Entities
 {
-    /// <summary>
-    /// Representa un producto en nuestro catálogo.
-    /// Esta es una entidad de dominio. Observe que es un POCO (Plain Old CLR Object).
-    /// No tiene referencias a Entity Framework, JSON.NET, o cualquier otra librería externa.
-    /// Solo contiene datos y, potencialmente, lógica de negocio pura (ej: un método para cambiar el precio).
-    /// </summary>
     public class Product
     {
-        /// <summary>
-        /// Identificador único del producto.
-        /// </summary>
+        private decimal _price; // Campo privado para almacenar el precio
+
         public Guid Id { get; set; }
-
-        /// <summary>
-        /// Nombre del producto.
-        /// </summary>
         public string Name { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Descripción detallada del producto.
-        /// </summary>
         public string Description { get; set; } = string.Empty;
 
         /// <summary>
-        /// Precio del producto. Usamos decimal para mayor precisión monetaria.
+        /// Propiedad pública para el precio.
+        /// La lógica de validación está encapsulada aquí dentro.
         /// </summary>
-        public decimal Price { get; set; }
+        public decimal Price
+        {
+            get => _price;
+            set
+            {
+                // REGLA DE DOMINIO: El precio no puede ser negativo o cero.
+                // Esta regla protege a la entidad de estar en un estado inválido.
+                if (value <= 0)
+                {
+                    // Lanzamos una excepción específica del dominio.
+                    throw new ArgumentOutOfRangeException(nameof(Price), "El precio debe ser un valor positivo.");
+                }
+                _price = value;
+            }
+        }
 
-        /// <summary>
-        /// Cantidad de unidades disponibles en stock.
-        /// </summary>
         public int Stock { get; set; }
+
+        // Podríamos usar un constructor para forzar la creación de una entidad válida desde el principio.
+        public Product(Guid id, string name, decimal price, int stock)
+        {
+            Id = id;
+            Name = name;
+            Price = price; // La validación del setter se ejecutará aquí.
+            Stock = stock;
+        }
+
+        // Constructor sin parámetros necesario para algunos frameworks como EF Core
+        public Product() { }
     }
 }

@@ -10,6 +10,7 @@ using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson; 
 using MongoDB.Driver;
+using MiTienda.Application.Features.Products.Commands.CreateProduct;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +39,7 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 // Simplemente cambiamos la clase que implementa la interfaz.
 // El resto de la aplicación (Controladores, Casos de Uso) no se entera de este cambio.
 builder.Services.AddSingleton<IProductRepository, MongoProductRepository>();
+builder.Services.AddScoped<CreateProductCommandHandler>();
 // Usamos AddSingleton aquí porque el driver de Mongo gestiona el pooling de conexiones eficientemente.
 
 
