@@ -1,26 +1,25 @@
-﻿// --- Archivo: Controllers/ProductsController.cs ---
+﻿// --- PASO 2: DEJAR EL CONTROLLER COMPLETAMENTE LIMPIO ---
+// --- Proyecto: MiTienda.Api ---
+// --- Archivo: Controllers/ProductsController.cs (VERSIÓN FINAL) ---
 
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using MiTienda.Application.Features.Products.Commands.CreateProduct;
-using MiTienda.Application.Interfaces;
-using MiTienda.Domain.Entities;
+using MiTienda.Application.Features.Products.Queries.GetAllProducts; // <-- Añadir using
+using MiTienda.Application.Features.Products.Queries.GetProductById; // <-- Añadir using
+using MiTienda.Domain.Entities; // <-- Este using sigue siendo necesario para los tipos de retorno
 
 namespace MiTienda.Api.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")] // La ruta será /api/products
+    [Route("api/[controller]")]
     public class ProductsController : ControllerBase
     {
-        private readonly IProductRepository _productRepository;
-        private readonly CreateProductCommandHandler _createProductHandler;
+        private readonly IMediator _mediator; // ¡Nuestra ÚNICA dependencia!
 
-        // ¡Magia! El controlador no sabe que existe 'ProductRepository' o EF Core.
-        // Solo pide la interfaz 'IProductRepository' que definimos en la capa de Application.
-        // El sistema de DI se encarga de inyectar la implementación correcta que registramos en Program.cs.
-        public ProductsController(IProductRepository productRepository, CreateProductCommandHandler createProductHandler)
+        public ProductsController(IMediator mediator)
         {
-            _productRepository = productRepository;
-            _createProductHandler = createProductHandler;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -29,36 +28,36 @@ namespace MiTienda.Api.Controllers
         [HttpGet]
         public async Task<ActionResult<IReadOnlyList<Product>>> GetProducts()
         {
-            var products = await _productRepository.GetAllAsync();
+            // Creamos y enviamos la consulta a MediatR.
+            var products = await _mediator.Send(new GetAllProductsQuery());
             return Ok(products);
         }
 
         /// <summary>
         /// Obtiene un producto por su ID.
-        /// ESTE ES EL MÉTODO QUE FALTABA.
         /// </summary>
         [HttpGet("{id}")]
         public async Task<ActionResult<Product>> GetProductById(Guid id)
         {
-            var product = await _productRepository.GetByIdAsync(id);
+            // Creamos y enviamos la consulta con su ID.
+            var product = await _mediator.Send(new GetProductByIdQuery { Id = id });
 
             if (product == null)
             {
-                return NotFound(); // Devuelve un 404 si no se encuentra
+                return NotFound();
             }
 
             return Ok(product);
         }
 
+        /// <summary>
+        /// Crea un nuevo producto.
+        /// </summary>
         [HttpPost]
         public async Task<IActionResult> CreateProduct([FromBody] CreateProductCommand command)
         {
-            // Inyectaríamos el CreateProductCommandHandler en el constructor del controlador.
-            var handler = new CreateProductCommandHandler(_productRepository); // Simplificado
-
-            var productId = await handler.Handle(command);
-
-            return CreatedAtAction(nameof(GetProductById), new { id = productId }, null);
+            var productId = await _mediator.Send(command);
+            return CreatedAtAction(nameof(GetProductById), new { id = productId }, command);
         }
     }
 }

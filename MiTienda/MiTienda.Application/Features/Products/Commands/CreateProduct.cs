@@ -4,17 +4,22 @@
 
 using MiTienda.Application.Interfaces;
 using MiTienda.Domain.Entities;
+using MediatR;
 
 namespace MiTienda.Application.Features.Products.Commands.CreateProduct
 {
-    public class CreateProductCommand
+    /// <summary>
+    /// Ahora el comando implementa IRequest<TResponse>.
+    /// IRequest<Guid> significa: "Soy una solicitud que espera una respuesta de tipo Guid".
+    /// </summary>
+    public class CreateProductCommand : IRequest<Guid>
     {
         public string Name { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public int Stock { get; set; }
     }
 
-    public class CreateProductCommandHandler
+    public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand, Guid>
     {
         private readonly IProductRepository _productRepository;
 
@@ -23,7 +28,7 @@ namespace MiTienda.Application.Features.Products.Commands.CreateProduct
             _productRepository = productRepository;
         }
 
-        public async Task<Guid> Handle(CreateProductCommand command)
+        public async Task<Guid> Handle(CreateProductCommand request, CancellationToken cancellationToken)
         {
             // REGLA DE APLICACIÓN: Comprobar si ya existe un producto con el mismo nombre.
             // Esta regla necesita dependencias externas (el repositorio), por eso va aquí.
@@ -39,9 +44,9 @@ namespace MiTienda.Application.Features.Products.Commands.CreateProduct
             var product = new Product
             {
                 Id = Guid.NewGuid(),
-                Name = command.Name,
-                Price = command.Price, // ¡La validación se ejecuta aquí!
-                Stock = command.Stock
+                Name = request.Name,
+                Price = request.Price, // ¡La validación se ejecuta aquí!
+                Stock = request.Stock
             };
 
             await _productRepository.AddAsync(product);
